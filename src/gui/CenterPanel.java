@@ -23,6 +23,7 @@ public class CenterPanel extends JPanel {
     
     private NetworkGraph graph;
     private Router selectedRouter;
+    private Link selectedLink;
     private Router draggedRouter;
     private Point dragOffset;
     private boolean isDragging;
@@ -31,6 +32,9 @@ public class CenterPanel extends JPanel {
     private Set<Router> highlightedRouters;
     private Set<Link> highlightedLinks;
     private Map<Router, Color> routerColors;
+    
+    // Callback for delete operations
+    private Runnable onDeleteRequest;
     
     public CenterPanel(NetworkGraph graph) {
         this.graph = graph;
@@ -42,22 +46,36 @@ public class CenterPanel extends JPanel {
         
         setBackground(Color.WHITE);
         setPreferredSize(new Dimension(800, 600));
+        setFocusable(true); // Required for keyboard events
         
         // Mouse listeners for drag and drop
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                requestFocusInWindow(); // Get focus for keyboard events
+                
                 Router clicked = graph.getRouterAt(e.getX(), e.getY(), SELECTION_RADIUS);
                 if (clicked != null) {
                     selectedRouter = clicked;
+                    selectedLink = null;
                     draggedRouter = clicked;
                     Point routerPos = clicked.getPosition();
                     dragOffset = new Point(e.getX() - routerPos.x, e.getY() - routerPos.y);
                     isDragging = true;
                     repaint();
                 } else {
-                    selectedRouter = null;
-                    repaint();
+                    // Check if clicking on a link
+                    Link clickedLink = getLinkAt(e.getX(), e.getY());
+                    if (clickedLink != null) {
+                        selectedLink = clickedLink;
+                        selectedRouter = null;
+                        draggedRouter = null;
+                        repaint();
+                    } else {
+                        selectedRouter = null;
+                        selectedLink = null;
+                        repaint();
+                    }
                 }
             }
             
@@ -91,14 +109,114 @@ public class CenterPanel extends JPanel {
                 }
             }
         });
+        
+        // Keyboard listener for Delete key
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_DELETE || e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+                    if (selectedRouter != null || selectedLink != null) {
+                        if (onDeleteRequest != null) {
+                            onDeleteRequest.run();
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Find link at given coordinates (within a certain distance from the line)
+     */
+    private Link getLinkAt(int x, int y) {
+        final int LINK_CLICK_TOLERANCE = 5; // pixels
+        
+        for (Link link : graph.getLinks()) {
+            Router source = link.getSource();
+            Router dest = link.getDestination();
+            Point sourcePos = source.getPosition();
+            Point destPos = dest.getPosition();
+            
+            // Calculate distance from point to line segment
+            double distance = pointToLineDistance(x, y, 
+                sourcePos.x, sourcePos.y, destPos.x, destPos.y);
+            
+            if (distance <= LINK_CLICK_TOLERANCE) {
+                // Also check if point is within the line segment bounds
+                int minX = Math.min(sourcePos.x, destPos.x);
+                int maxX = Math.max(sourcePos.x, destPos.x);
+                int minY = Math.min(sourcePos.y, destPos.y);
+                int maxY = Math.max(sourcePos.y, destPos.y);
+                
+                if (x >= minX - LINK_CLICK_TOLERANCE && x <= maxX + LINK_CLICK_TOLERANCE &&
+                    y >= minY - LINK_CLICK_TOLERANCE && y <= maxY + LINK_CLICK_TOLERANCE) {
+                    return link;
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Calculate distance from a point to a line segment
+     */
+    private double pointToLineDistance(int px, int py, int x1, int y1, int x2, int y2) {
+        double A = px - x1;
+        double B = py - y1;
+        double C = x2 - x1;
+        double D = y2 - y1;
+        
+        double dot = A * C + B * D;
+        double lenSq = C * C + D * D;
+        double param = -1;
+        
+        if (lenSq != 0) {
+            param = dot / lenSq;
+        }
+        
+        double xx, yy;
+        
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        
+        double dx = px - xx;
+        double dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    public void setOnDeleteRequest(Runnable callback) {
+        this.onDeleteRequest = callback;
     }
     
     public Router getSelectedRouter() {
         return selectedRouter;
     }
     
+    public Link getSelectedLink() {
+        return selectedLink;
+    }
+    
     public void setSelectedRouter(Router router) {
         this.selectedRouter = router;
+        if (router != null) {
+            this.selectedLink = null;
+        }
+        repaint();
+    }
+    
+    public void setSelectedLink(Link link) {
+        this.selectedLink = link;
+        if (link != null) {
+            this.selectedRouter = null;
+        }
         repaint();
     }
     
@@ -151,9 +269,12 @@ public class CenterPanel extends JPanel {
         Point sourcePos = source.getPosition();
         Point destPos = dest.getPosition();
         
-        // Choose color based on highlight
-        if (highlightedLinks.contains(link)) {
+        // Choose color based on highlight or selection
+        if (link.equals(selectedLink)) {
             g.setColor(Color.RED);
+            g.setStroke(new BasicStroke(4));
+        } else if (highlightedLinks.contains(link)) {
+            g.setColor(Color.ORANGE);
             g.setStroke(new BasicStroke(3));
         } else {
             g.setColor(Color.GRAY);

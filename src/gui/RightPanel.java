@@ -224,14 +224,41 @@ public class RightPanel extends JPanel {
         JTable table = new JTable(model);
         table.setFillsViewportHeight(true);
         
-        // Populate table
+        // Populate table - ensure all routers are shown
         Map<String, Integer> routingTable = router.getRoutingTable();
         Map<String, String> nextHopTable = router.getNextHopTable();
         
-        for (String destination : routingTable.keySet()) {
+        // Get all routers in the network to ensure completeness
+        java.util.List<models.Router> allRouters = graph.getRouters();
+        
+        // Sort destinations alphabetically for better readability
+        java.util.List<String> destinations = new java.util.ArrayList<>(routingTable.keySet());
+        java.util.Collections.sort(destinations);
+        
+        // If routing table doesn't have all routers, add missing ones
+        for (models.Router r : allRouters) {
+            String routerName = r.getName();
+            if (!destinations.contains(routerName)) {
+                destinations.add(routerName);
+            }
+        }
+        java.util.Collections.sort(destinations);
+        
+        for (String destination : destinations) {
             Integer cost = routingTable.get(destination);
             String nextHop = nextHopTable.getOrDefault(destination, "-");
-            String costStr = (cost == null || cost == Integer.MAX_VALUE) ? "∞" : String.valueOf(cost);
+            
+            // Format cost: show ∞ for infinity or unreachable
+            String costStr;
+            if (cost == null || cost == Integer.MAX_VALUE) {
+                costStr = "∞";
+                if (nextHop.equals("-")) {
+                    nextHop = "-";
+                }
+            } else {
+                costStr = String.valueOf(cost);
+            }
+            
             model.addRow(new Object[]{destination, costStr, nextHop});
         }
         

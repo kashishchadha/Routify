@@ -63,6 +63,9 @@ public class MainFrame extends JFrame {
         
         setupGraphChangeListeners();
         
+        // Set up delete handler for center panel
+        centerPanel.setOnDeleteRequest(() -> handleDeleteRequest());
+        
         // Add panels to frame
         add(leftPanel, BorderLayout.WEST);
         add(centerPanel, BorderLayout.CENTER);
@@ -92,6 +95,47 @@ public class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> {
             rightPanel.updateSourceComboBox();
         });
+    }
+    
+    private void handleDeleteRequest() {
+        Router selectedRouter = centerPanel.getSelectedRouter();
+        models.Link selectedLink = centerPanel.getSelectedLink();
+        
+        if (selectedRouter != null) {
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete router '" + selectedRouter.getName() + "'?\n" +
+                "This will also remove all links connected to it.",
+                "Delete Router",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                graph.removeRouter(selectedRouter);
+                centerPanel.setSelectedRouter(null);
+                centerPanel.repaint();
+                notifyGraphChanged();
+                statusLabel.setText("Router '" + selectedRouter.getName() + "' deleted.");
+            }
+        } else if (selectedLink != null) {
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete the link between '" + 
+                selectedLink.getSource().getName() + "' and '" + 
+                selectedLink.getDestination().getName() + "'?",
+                "Delete Link",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                graph.removeLink(selectedLink.getSource(), selectedLink.getDestination());
+                centerPanel.setSelectedLink(null);
+                centerPanel.repaint();
+                statusLabel.setText("Link deleted.");
+            }
+        }
     }
     
     private void runAlgorithm(int algorithmIndex) {

@@ -2,6 +2,7 @@ package models;
 
 import java.awt.Point;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -120,6 +121,7 @@ public class Router {
     
     /**
      * Reset routing table to initial state (only self)
+     * Note: This method does not include all routers - use resetRoutingTable(List<Router>) instead
      */
     public void resetRoutingTable() {
         routingTable.clear();
@@ -133,6 +135,34 @@ public class Router {
             int cost = entry.getValue();
             routingTable.put(neighborName, cost);
             nextHopTable.put(neighborName, neighborName);
+        }
+    }
+    
+    /**
+     * Reset routing table and include all routers in the network.
+     * Unreachable routers will have cost Integer.MAX_VALUE (infinity)
+     */
+    public void resetRoutingTable(List<Router> allRouters) {
+        routingTable.clear();
+        nextHopTable.clear();
+        
+        // Initialize all routers with infinity
+        for (Router router : allRouters) {
+            String routerName = router.getName();
+            if (routerName.equals(name)) {
+                // Self: cost 0
+                routingTable.put(routerName, 0);
+                nextHopTable.put(routerName, routerName);
+            } else if (neighbors.containsKey(router)) {
+                // Direct neighbor: actual cost
+                int cost = neighbors.get(router);
+                routingTable.put(routerName, cost);
+                nextHopTable.put(routerName, routerName);
+            } else {
+                // Not reachable: infinity
+                routingTable.put(routerName, Integer.MAX_VALUE);
+                nextHopTable.put(routerName, "-");
+            }
         }
     }
     

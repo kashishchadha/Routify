@@ -83,10 +83,11 @@ public class LinkState {
             }
         }
         
-        // Update routing table for source router
+        // Update routing table for source router - include ALL routers
         for (Router router : graph.getRouters()) {
             if (router.equals(source)) {
-                continue; // Skip self
+                source.updateRoutingEntry(source.getName(), 0, source.getName());
+                continue;
             }
             
             Integer dist = distances.get(router);
@@ -106,6 +107,21 @@ public class LinkState {
                 }
                 
                 source.updateRoutingEntry(router.getName(), dist, nextHop.getName());
+            } else {
+                // Unreachable destination - set to infinity
+                source.updateRoutingEntry(router.getName(), Integer.MAX_VALUE, "-");
+            }
+        }
+        
+        // Ensure all routers are in the table
+        for (Router router : graph.getRouters()) {
+            String routerName = router.getName();
+            if (!source.getRoutingTable().containsKey(routerName)) {
+                if (routerName.equals(source.getName())) {
+                    source.updateRoutingEntry(routerName, 0, routerName);
+                } else {
+                    source.updateRoutingEntry(routerName, Integer.MAX_VALUE, "-");
+                }
             }
         }
         

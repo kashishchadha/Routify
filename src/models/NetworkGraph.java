@@ -145,7 +145,7 @@ public class NetworkGraph {
      */
     public void resetRoutingTables() {
         for (Router router : routers) {
-            router.resetRoutingTable();
+            router.resetRoutingTable(routers);
         }
     }
     

@@ -32,11 +32,27 @@ public class DistanceVector {
         iteration++;
         boolean changed = false;
         
+        List<Router> allRouters = graph.getRouters();
+        
         // Each router receives routing tables from neighbors and updates its own
-        for (Router router : graph.getRouters()) {
+        for (Router router : allRouters) {
             // Get current routing table
             Map<String, Integer> currentTable = new HashMap<>(router.getRoutingTable());
             Map<String, String> currentNextHop = new HashMap<>(router.getNextHopTable());
+            
+            // Ensure all routers are in the table (initialize missing ones with infinity)
+            for (Router destRouter : allRouters) {
+                String destName = destRouter.getName();
+                if (!currentTable.containsKey(destName)) {
+                    if (destName.equals(router.getName())) {
+                        currentTable.put(destName, 0);
+                        currentNextHop.put(destName, destName);
+                    } else {
+                        currentTable.put(destName, Integer.MAX_VALUE);
+                        currentNextHop.put(destName, "-");
+                    }
+                }
+            }
             
             // Update routing table based on neighbors' tables
             for (Map.Entry<Router, Integer> neighborEntry : router.getNeighbors().entrySet()) {
@@ -57,19 +73,34 @@ public class DistanceVector {
                         continue;
                     }
                     
+                    // Handle infinity case
+                    if (neighborCostToDest == Integer.MAX_VALUE) {
+                        continue; // Can't improve path through unreachable neighbor
+                    }
+                    
                     // Calculate new cost: cost to neighbor + neighbor's cost to destination
                     int newCost = linkCost + neighborCostToDest;
                     
+                    // Prevent overflow
+                    if (newCost < 0) {
+                        newCost = Integer.MAX_VALUE;
+                    }
+                    
                     // Update if this is a better path or if we don't have a path yet
                     Integer currentCost = currentTable.get(destination);
-                    if (currentCost == null || newCost < currentCost) {
+                    if (currentCost == null) {
+                        currentCost = Integer.MAX_VALUE;
+                    }
+                    
+                    if (newCost < currentCost) {
                         currentTable.put(destination, newCost);
                         currentNextHop.put(destination, neighbor.getName());
                         changed = true;
-                    } else if (currentCost.equals(newCost) && 
-                               currentNextHop.get(destination).equals(neighbor.getName())) {
-                        // Path might have changed even if cost is same
-                        // (This handles the case where we update next hop)
+                    } else if (currentCost == Integer.MAX_VALUE && newCost < Integer.MAX_VALUE) {
+                        // Found a path where there was none
+                        currentTable.put(destination, newCost);
+                        currentNextHop.put(destination, neighbor.getName());
+                        changed = true;
                     }
                 }
             }
