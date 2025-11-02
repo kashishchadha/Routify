@@ -49,6 +49,18 @@ public class MainFrame extends JFrame {
             notifyGraphChanged();
         });
         
+        // Listen for stop simulation request
+        leftPanel.addPropertyChangeListener("stopSimulation", e -> {
+            if (simulationEngine.isRunning()) {
+                simulationEngine.stopSimulation();
+                leftPanel.setButtonsEnabled(true);
+                rightPanel.setControlsEnabled(true);
+                statusLabel.setText("Simulation stopped. Network cleared.");
+            }
+            // Close any open routing tables dialog
+            rightPanel.closeRoutingTablesDialog();
+        });
+        
         setupGraphChangeListeners();
         
         // Add panels to frame

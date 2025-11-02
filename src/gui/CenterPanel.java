@@ -115,6 +115,7 @@ public class CenterPanel extends JPanel {
     public void clearHighlights() {
         this.highlightedRouters.clear();
         this.highlightedLinks.clear();
+        this.routerColors.clear();
         repaint();
     }
     

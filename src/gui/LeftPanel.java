@@ -17,6 +17,7 @@ public class LeftPanel extends JPanel {
     private JButton addRouterButton;
     private JButton addLinkButton;
     private JButton runAlgorithmButton;
+    private JButton undoAllButton;
     private JComboBox<String> algorithmComboBox;
     
     private int routerCounter = 1;
@@ -62,6 +63,16 @@ public class LeftPanel extends JPanel {
             }
         });
         
+        // Undo All button (Clear Network)
+        undoAllButton = new JButton("Undo All");
+        undoAllButton.setForeground(Color.RED);
+        undoAllButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undoAll();
+            }
+        });
+        
         // Add components with spacing
         add(Box.createVerticalStrut(10));
         add(addRouterButton);
@@ -72,6 +83,10 @@ public class LeftPanel extends JPanel {
         add(algorithmComboBox);
         add(Box.createVerticalStrut(10));
         add(runAlgorithmButton);
+        add(Box.createVerticalStrut(20));
+        add(new JSeparator());
+        add(Box.createVerticalStrut(10));
+        add(undoAllButton);
         add(Box.createVerticalGlue());
     }
     
@@ -174,11 +189,51 @@ public class LeftPanel extends JPanel {
         return algorithmComboBox.getSelectedIndex();
     }
     
+    private void undoAll() {
+        // Confirm with user
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to clear the entire network?\nThis will remove all routers and links.",
+            "Clear Network",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Stop any running simulation
+            firePropertyChange("stopSimulation", null, null);
+            
+            // Clear the graph
+            graph.clear();
+            
+            // Reset router counter
+            routerCounter = 1;
+            
+            // Clear highlights in center panel
+            centerPanel.clearHighlights();
+            centerPanel.setSelectedRouter(null);
+            
+            // Repaint
+            centerPanel.repaint();
+            
+            // Notify main frame to update UI
+            firePropertyChange("graphChanged", null, "cleared");
+            
+            JOptionPane.showMessageDialog(
+                this,
+                "Network cleared successfully!",
+                "Network Cleared",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
+    
     public void setButtonsEnabled(boolean enabled) {
         addRouterButton.setEnabled(enabled);
         addLinkButton.setEnabled(enabled);
         runAlgorithmButton.setEnabled(enabled);
         algorithmComboBox.setEnabled(enabled);
+        // Keep Undo All button always enabled
     }
     
     public void notifyGraphChanged() {

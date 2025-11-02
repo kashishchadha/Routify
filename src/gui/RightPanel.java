@@ -83,6 +83,12 @@ public class RightPanel extends JPanel {
         sourceComboBox.repaint();
     }
     
+    public void closeRoutingTablesDialog() {
+        if (routingTablesDialog != null && routingTablesDialog.isVisible()) {
+            routingTablesDialog.dispose();
+        }
+    }
+    
     public Router getSelectedSource() {
         String selectedName = (String) sourceComboBox.getSelectedItem();
         if (selectedName == null) {
